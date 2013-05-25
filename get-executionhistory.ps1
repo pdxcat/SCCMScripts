@@ -65,16 +65,25 @@ function format-output{
      param(
         [object]$list
      )
+      ## Formats the name of the Package so it outputs Package Name as a title
       $NameFormat =    @{Expression={$_.name};Label="Package Name";width=15;}
+      ## Formats the PackageID 
       $PKIDFormat =    @{Expression={$_.PKID};Label="PackageID";width=12}
+      ## Formats the output of Program
       $ProgramFormat = @{Expression={$_._ProgramID};Label="Program";width=25}
+      ## Formats the output of Version 
       $VersionFormat = @{Expression={$_.version};Label="Version";width=10}
+      ## Formats the output the State(FailorSuccess)
       $StateFormat =   @{Expression={$_._State};Label="State";width=10}
+      ## Formats the output of Start Time 
       $StartFormat =   @{Expression={$_._RunStartTime};Label="Start Time";width=20}
+      ## Formats the output of Exit Code
       $ExitFormat =    @{Expression={$_.SuccessOrFailureCode};Label="Exit Code";width=9}
+      ## Formats the output of Exit reason if failed. 
       $ReasonFormat =  @{Expression={$_._SuccessOrFailureReason};Label="Reason"}
       $list | Format-Table $NameFormat,$PKIDFormat,$ProgramFormat,$VersionFormat,$StateFormat,$StartFormat,$ExitFormat
 }
+
 
 $list = Get-History
 $fulllist = add-packagename $list
