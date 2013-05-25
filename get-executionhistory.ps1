@@ -43,6 +43,8 @@ function get-history{
  return $list
 }
 
+## This will add packagename and the version of the packaged. This information is gained from the sccm
+## server. 
 function add-packagename{
     param([object]$list)
     $templist = $list
@@ -58,6 +60,7 @@ function add-packagename{
 
 }
 
+## This will format the output into a more readable format. 
 function format-output{
      param(
         [object]$list
@@ -72,7 +75,6 @@ function format-output{
       $ReasonFormat =  @{Expression={$_._SuccessOrFailureReason};Label="Reason"}
       $list | Format-Table $NameFormat,$PKIDFormat,$ProgramFormat,$VersionFormat,$StateFormat,$StartFormat,$ExitFormat
 }
-
 
 $list = Get-History
 $fulllist = add-packagename $list
