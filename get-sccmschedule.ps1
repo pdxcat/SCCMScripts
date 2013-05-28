@@ -1,7 +1,20 @@
-﻿param(
+﻿<#
+    .Synopsis
+    This retrieves what advertizements are scheduled to be installed.  
+    
+    .Description
+    This script will output the advertizements schedule for a machine. It uses a wmi to find the scheduled advert.
+    and the package information. Then it combies the outputs. 
+
+    .Example
+    get-sccmschedule.ps1 <computername>
+    This will output the scheduled tasks.  
+#>
+param(
     [string]$CompName
 )
 
+## Graps the package information 
 $Schedulelist = Get-WmiObject -Namespace "root\ccm\scheduler" -Class ccm_scheduler_history -ComputerName $CompName | where -Property "ScheduleId" -Match "cat" | select ScheduleID,lasttriggertime
 $PkgInfo = Get-WmiObject -Namespace "Root\sms\Site_KAT" -Class SMS_Program -ComputerName Itzamna | select PackageID,PackageName,PackageVersion -Unique
 
@@ -28,7 +41,6 @@ function format-date{
         $minute = $date.substring(10,2)
         $second = $date.substring(12,2)
         "$month/$day/$year $hour`:$minute`:$second"
- 
 }
 
 $finallist = format-pkg
