@@ -22,9 +22,23 @@
     A list of the names of different types (configurations) of uninstallations of the same software package. E.g. 64-bit vs. 32-bit.
 
     .Example
+    Create-SCCMPackage.ps1 -SoftwareName Thunderbird -Version 17.0.7 -Manufacturer Mozilla
+
+    This will create the following AD Groups:
+    SCCM_Thunderbird 17.0.7
+    SCCM_Thunderbird 17.0.7 Uninstall
+
+    The following Collections:
+    Install Thunderbird 17.0.7
+    Uninstall Thunderbird 17.0.7
+
+    And the following Package:
+    Mozilla Thunderbird 17.0.7
+
+    .Example
     Create-SCCMPackage.ps1 -SoftwareName SPSS -Version 21 -Manufacturer IBM -InstallTypes Network,Activation
 
-    This will create the following AD groups:
+    This will create the following AD Groups:
     SCCM_SPSS 21 Network
     SCCM_SPSS 21 Activation
     SCCM_SPSS 21 Uninstall
@@ -57,6 +71,7 @@ param(
 Import-Module ActiveDirectory
 Import-Module "C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\ConfigurationManager.psd1"
 $GroupOU = "OU=SCCM Applications,OU=CECS Groups,DC=DS,DC=CECS,DC=PDX,DC=EDU"
+$SCCMSiteCode = "KAT"
 
 # Create Install group(s)
 if ($InstallTypes) {
