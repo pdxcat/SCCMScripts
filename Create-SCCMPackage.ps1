@@ -1,3 +1,42 @@
+<#
+    .Synopsis
+    Creates the framework for a Group-deployed SCCM 2012 software package.
+
+    .Description
+    Creates AD Security Groups for installing and uninstalling a software package, then creates SCCM 2012 Collections which are populated by members of those groups, and then creates a SCCM 2012 Package which will install software to those Collections.
+    The Programs within the SCCM 2012 Package must still be created, as well as the Advertisements.
+
+    .Parameter SoftwareName
+    The name of the software package.
+
+    .Parameter Version
+    The version number of the software package.
+
+    .Parameter Manufacturer
+    The manufacturer/vendor of the software package.
+
+    .Parameter InstallTypes
+    A list of the names of different types (configurations) of installations of the same software package. E.g. network (license server) activation vs. serial number activation, 64-bit vs. 32-bit, etc.
+
+    .Parameter UninstallTypes
+    A list of the names of different types (configurations) of uninstallations of the same software package. E.g. 64-bit vs. 32-bit.
+
+    .Example
+    Create-SCCMPackage.ps1 -SoftwareName SPSS -Version 21 -Manufacturer IBM -InstallTypes Network,Activation
+
+    This will create the following AD groups:
+    SCCM_SPSS 21 Network
+    SCCM_SPSS 21 Activation
+    SCCM_SPSS 21 Uninstall
+
+    The following Collections:
+    Install SPSS 21 Network
+    Install SPSS 21 Activation
+    Uninstall SPSS 21
+
+    And the following Package:
+    IBM SPSS 21
+#>
 param(
     [CmdletBinding()]
     [Parameter(Mandatory=$true)]
