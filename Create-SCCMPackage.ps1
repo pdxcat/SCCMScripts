@@ -108,58 +108,60 @@ Function Move-CMObject
 
 
 # Create Install group(s)
+$InstallGroups = @()
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $GroupName = "SCCM_${SoftwareName} ${Version} ${Type}"
         Write-Host "Creating Group '$GroupName'."
-        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
+        $InstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
     }
 } else {
     $GroupName = "SCCM_${SoftwareName} ${Version}"
     Write-Host "Creating Group '$GroupName'."
-    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
+    $InstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
 }
 
 # Create Uninstall group(s)
+$UninstallGroups = @()
 if ($UninstallTypes) {
     foreach ($Type in $UninstallTypes) {
         $GroupName = "SCCM_${SoftwareName} ${Version} ${Type} Uninstall"
         Write-Host "Creating Group '$GroupName'."
-        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
+        $UninstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
     }
 } else {
     $GroupName = "SCCM_${SoftwareName} ${Version} Uninstall"
     Write-Host "Creating Group '$GroupName'."
-    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
+    $UninstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
 }
 
 # Switch contexts to SCCM 2012.
 Push-Location "${SCCMSiteCode}:\"
 
 # Create SCCM 2012 Device Collections.
-
+$InstallCollections = @()
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $CollectionName = "Install ${SoftwareName} ${Version} ${Type}"
         Write-Host "Creating Collection '$CollectionName'."
-        New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+        $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
     }
 } else {
     $CollectionName = "Install ${SoftwareName} ${Version}"
     Write-Host "Creating Collection '$CollectionName'."
-    New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
 }
-
+$UninstallCollections = @()
 if ($UninstallTypes) {
     foreach ($Type in $UninstallTypes) {
         $CollectionName = "Uninstall ${SoftwareName} ${Version} ${Type}"
         Write-Host "Creating Collection '$CollectionName'."
-        New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+        $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
     }
 } else {
     $CollectionName = "Uninstall ${SoftwareName} ${Version}"
     Write-Host "Creating Collection '$CollectionName'."
-    New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
 }
 
 # Create Folder to move Collections into.
