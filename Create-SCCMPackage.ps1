@@ -51,14 +51,14 @@
     And the following Package:
     IBM SPSS 21
 #>
-param(
-    [CmdletBinding()]
+[CmdletBinding()]
+Param(
     [Parameter(Mandatory=$true)]
     [Alias('Name')]
     [String]$SoftwareName,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true)]
     [String]$Version,
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true)]
     [Alias('Vendor')]
     [String]$Manufacturer,
     [Parameter(Mandatory=$false)]
@@ -70,31 +70,100 @@ param(
 # Load necessary Modules.
 Import-Module ActiveDirectory
 Import-Module "C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\ConfigurationManager.psd1"
-$GroupOU = "OU=SCCM Applications,OU=CECS Groups,DC=DS,DC=CECS,DC=PDX,DC=EDU"
+# Defining global variables here because I don't want to have to pass them in on command-line every time.
+# Alter these to set your own defaults for your environment.
+$GroupTargetOU = "OU=SCCM Applications,OU=CECS Groups,DC=DS,DC=CECS,DC=PDX,DC=EDU"
+$SCCMSiteServer = "ITZAMNA.DS.CECS.PDX.EDU"
 $SCCMSiteCode = "KAT"
+$RootSCCMFolderPath = "Software\"
+
+# Define function to move Objects into containing Folders in SCCM.
+# Credit for writing this function goes to Kaido, at http://cm12sdk.net/?p=1006.
+Function Move-CMObject
+{
+    [CmdLetBinding()]
+    Param(
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter Site Server Site code")]
+              $SiteCode,
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter Site Server Name")]
+              $SiteServer,
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter Object ID")]
+              [ARRAY]$ObjectID,
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter current folder ID")]
+              [uint32]$CurrentFolderID,
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter target folder ID")]
+              [uint32]$TargetFolderID,
+    [Parameter(Mandatory=$True,HelpMessage="Please Enter object type ID")]
+              [uint32]$ObjectTypeID
+    )
+ 
+    Try{
+        Invoke-WmiMethod -Namespace "Root\SMS\Site_$SiteCode" -Class SMS_objectContainerItem -Name MoveMembers -ArgumentList $CurrentFolderID,$ObjectID,$ObjectTypeID,$TargetFolderID -ComputerName $SiteServer -ErrorAction STOP
+    }
+    Catch{
+        $_.Exception.Message
+    }  
+}
+# Ex: Move-CMObject -SiteCode PRI -SiteServer Server100 -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
+
 
 # Create Install group(s)
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $GroupName = "SCCM_${SoftwareName} ${Version} ${Type}"
-        Write-Host "Creating group '$GroupName'."
-        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupOU -GroupScope Global
+        Write-Host "Creating Group '$GroupName'."
+        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
     }
 } else {
     $GroupName = "SCCM_${SoftwareName} ${Version}"
-    Write-Host "Creating group '$GroupName'."
-    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupOU -GroupScope Global
+    Write-Host "Creating Group '$GroupName'."
+    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
 }
 
 # Create Uninstall group(s)
 if ($UninstallTypes) {
     foreach ($Type in $UninstallTypes) {
         $GroupName = "SCCM_${SoftwareName} ${Version} ${Type} Uninstall"
-        Write-Host "Creating group '$GroupName'."
-        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupOU -GroupScope Global
+        Write-Host "Creating Group '$GroupName'."
+        New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
     }
 } else {
     $GroupName = "SCCM_${SoftwareName} ${Version} Uninstall"
-    Write-Host "Creating group '$GroupName'."
-    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupOU -GroupScope Global
+    Write-Host "Creating Group '$GroupName'."
+    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global
 }
+
+# Switch contexts to SCCM 2012.
+Push-Location "${SCCMSiteCode}:\"
+
+# Create SCCM 2012 Device Collections.
+
+if ($InstallTypes) {
+    foreach ($Type in $InstallTypes) {
+        $CollectionName = "Install ${SoftwareName} ${Version} ${Type}"
+        Write-Host "Creating Collection '$CollectionName'."
+        New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    }
+} else {
+    $CollectionName = "Install ${SoftwareName} ${Version}"
+    Write-Host "Creating Collection '$CollectionName'."
+    New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+}
+
+if ($UninstallTypes) {
+    foreach ($Type in $UninstallTypes) {
+        $CollectionName = "Uninstall ${SoftwareName} ${Version} ${Type}"
+        Write-Host "Creating Collection '$CollectionName'."
+        New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    }
+} else {
+    $CollectionName = "Uninstall ${SoftwareName} ${Version}"
+    Write-Host "Creating Collection '$CollectionName'."
+    New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+}
+
+# Create Folder to move Collections into.
+# Move Collections into Folder.
+#Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
+# Create Package
+Pop-Location
