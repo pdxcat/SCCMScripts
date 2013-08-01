@@ -1,59 +1,59 @@
 ﻿<#
     .Synopsis
-    This retrieves the execution history of sccm installed software. 
+    This retrieves the execution history of SCCM installed software. 
     
     .Description
-    This script gets the execution history of software installed by sccm. This is done by read the information 
-    from registry of the computer. It will output the package name, package id, program name, state, time runned and 
-    exit code. The input is computer name. 
+    This script gets the execution history of software installed by SCCM. This is done by reading the information 
+    from registry of the computer. It will output the package name, package id, program name, state, time ran and 
+    exit code. It takes the computer's name as input. 
 
     .Example
     get-executionhistory.ps1 smiley
     This will output the the execution history.  
 #>
-param([string]$computername)
+param([string]$ComputerName)
 
-## This is the registry path where the execution hisotry is stored in the regsity.
-$reg = "HKLM:\SOFTWARE\Microsoft\SMS\Mobile Client\Software Distribution\Execution History\System"
+## This is the registry path where the execution history is stored.
+$Reg = "HKLM:\SOFTWARE\Microsoft\SMS\Mobile Client\Software Distribution\Execution History\System"
 
-## This where the package name and package id information is store.
+## This where the package name and package id information is stored.
 $PkgInfo = Get-WmiObject -Namespace "Root\sms\Site_KAT" -Class SMS_Program -ComputerName Itzamna | select PackageID,PackageName,PackageVersion -Unique
 
 ## This will retrieve the execution history from the registry. The function will create a object and add the 
 ## additional information. Returns the list. 
-function get-history{
+function Get-History{
 
- ## This uses invoke command to run the script block on a remote computer. 
- $history = invoke-command -computername $computername {
+ ## This uses the invoke command to run the script block on a remote computer. 
+ $History = Invoke-Command -ComputerName $ComputerName {
             ## This used to pass a local parameter to the remote computer. 
-            param($reg)
+            param($Reg)
             
-            $PKIDlist = Get-ChildItem $reg | select -ExpandProperty name | foreach{$_.split('\')[8]} 
+            $PKIDlist = Get-ChildItem $Reg | select -ExpandProperty Name | foreach{$_.split('\')[8]} 
             foreach($PKID in $PKIDlist){
-                $GUID = Get-ChildItem $reg\$PKID | select -ExpandProperty name | foreach{$_.split('\')[9]}
+                $GUID = Get-ChildItem $Reg\$PKID | select -ExpandProperty Name | foreach{$_.split('\')[9]}
                 foreach($GID in $GUID){
-                    $APPInfo = Get-ItemProperty $reg\$PKID\$GID 
-                    $APPInfo | Add-Member -type NoteProperty -Name PKID -Value $PKID
-                    $appInfo
+                    $APPInfo = Get-ItemProperty $Reg\$PKID\$GID 
+                    $APPInfo | Add-Member -Type NoteProperty -Name PKID -Value $PKID
+                    $APPInfo
                 }
             }
-            } -ArgumentList $reg
- $list = $history | select PKID,_ProgramID,_State,_RunStartTime,SuccessOrFailureCode,SuccessOrFailureReason
+            } -ArgumentList $Reg
+ $List = $History | select PKID,_ProgramID,_State,_RunStartTime,SuccessOrFailureCode,SuccessOrFailureReason
 
- return $list
+ return $List
 }
 
-## This will add packagename and the version of the packaged. This information is gained from the sccm
+## This will add the package name and the package version. This information is gained from the SCCM
 ## server. 
-function add-packagename{
-    param([object]$list)
-    $templist = $list
-    foreach($PK in $templist){
-        foreach($PKlist in $Pkginfo){
-            if($pk.pkid -eq $pklist.packageid){
-                $pk | Add-Member -type NoteProperty -Name name -Value $pklist.packagename
-                $pk | Add-Member -type NoteProperty -Name version -Value $pklist.packageversion
-                $pk
+function Add-Packagename{
+    param([object]$List)
+    $TempList = $List
+    foreach($PK in $TempList){
+        foreach($PKList in $PkgInfo){
+            if($PK.PKID -eq $PKList.PackageID){
+                $PK | Add-Member -Type NoteProperty -Name Name -Value $PKList.PackageName
+                $PK | Add-Member -Type NoteProperty -Name Version -Value $PKList.PackageVersion
+                $PK
             }
         }
     }
@@ -61,9 +61,9 @@ function add-packagename{
 }
 
 ## This will format the output into a more readable format. 
-function format-output{
+function Format-Output{
      param(
-        [object]$list
+        [object]$List
      )
       ## Formats the name of the Package so it outputs Package Name as a title
       $NameFormat =    @{Expression={$_.name};Label="Package Name";width=15;}
@@ -81,11 +81,11 @@ function format-output{
       $ExitFormat =    @{Expression={$_.SuccessOrFailureCode};Label="Exit Code";width=9}
       ## Formats the output of Exit reason if failed. 
       $ReasonFormat =  @{Expression={$_._SuccessOrFailureReason};Label="Reason"}
-      $list | Format-Table $NameFormat,$PKIDFormat,$ProgramFormat,$VersionFormat,$StateFormat,$StartFormat,$ExitFormat
+      $List | Format-Table $NameFormat,$PKIDFormat,$ProgramFormat,$VersionFormat,$StateFormat,$StartFormat,$ExitFormat
 }
 
 
-$list = Get-History
-$fulllist = add-packagename $list
-format-output $fulllist
+$List = Get-History
+$FullList = Add-Packagename $List
+Format-Output $FullList
 
