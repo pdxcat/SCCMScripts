@@ -4,7 +4,7 @@
     
     .Description
     This script gets the execution history of software installed by SCCM. This is done by reading the information 
-    from registry of the computer. It will output the package name, package id, program name, state, time ran and 
+    from the registry of the computer. It will output the package name, package id, program name, state, time ran and 
     exit code. It takes the computer's name as input. 
 
     .Example
@@ -23,7 +23,7 @@ $PkgInfo = Get-WmiObject -Namespace "Root\sms\Site_KAT" -Class SMS_Program -Comp
 ## additional information. Returns the list. 
 function Get-History{
 
- ## This uses the invoke command to run the script block on a remote computer. 
+ ## This uses the Invoke-Command to run the script block on a remote computer. 
  $History = Invoke-Command -ComputerName $ComputerName {
             ## This used to pass a local parameter to the remote computer. 
             param($Reg)
