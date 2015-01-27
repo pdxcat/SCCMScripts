@@ -140,32 +140,36 @@ Push-Location "${SCCMSiteCode}:\"
 
 # Create SCCM 2012 Device Collections.
 $InstallCollections = @()
+$sched = New-CMSchedule -End (Get-Date) -RecurCount 5 -RecurInterval Minutes -Start (Get-Date)
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $CollectionName = "Install ${SoftwareName} ${Version} ${Type}"
         Write-Host "Creating Collection '$CollectionName'."
-        $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+        $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
     }
 } else {
     $CollectionName = "Install ${SoftwareName} ${Version}"
     Write-Host "Creating Collection '$CollectionName'."
-    $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
 }
 $UninstallCollections = @()
 if ($UninstallTypes) {
     foreach ($Type in $UninstallTypes) {
         $CollectionName = "Uninstall ${SoftwareName} ${Version} ${Type}"
         Write-Host "Creating Collection '$CollectionName'."
-        $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+        $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
     }
 } else {
     $CollectionName = "Uninstall ${SoftwareName} ${Version}"
     Write-Host "Creating Collection '$CollectionName'."
-    $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshType Periodic
+    $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
 }
 
 # Create Folder to move Collections into.
 # Move Collections into Folder.
 #Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
+# gwmi -query "select * from SMS_ObjectContainerNode where name like 'Software'" -Namespace "root\SMS\Site_KAT" -comp itzamna | format-list *
 # Create Package
+#$sched = ([wmiclass]"\\${SCCMSiteServer}\Root\SMS\Site_${SCCMSiteCode}:SMS_ST_RecurInterval").CreateInstance()
+
 Pop-Location
