@@ -53,18 +53,11 @@
 #>
 [CmdletBinding()]
 Param(
-    [Parameter(Mandatory=$true)]
-    [Alias('Name')]
-    [String]$SoftwareName,
-    [Parameter(Mandatory=$true)]
-    [String]$Version,
-    [Parameter(Mandatory=$true)]
-    [Alias('Vendor')]
-    [String]$Manufacturer,
-    [Parameter(Mandatory=$false)]
-    [String[]]$InstallTypes = $null,
-    [Parameter(Mandatory=$false)]
-    [String[]]$UninstallTypes = $null
+    [Parameter(Mandatory=$true)][Alias('Name')][String]$SoftwareName,
+    [Parameter(Mandatory=$true)][String]$Version,
+    [Parameter(Mandatory=$true)][Alias('Vendor')][String]$Manufacturer,
+    [Parameter(Mandatory=$false)][String[]]$InstallTypes = $null,
+    [Parameter(Mandatory=$false)][String[]]$UninstallTypes = $null
 )
 
 # Load necessary Modules.
