@@ -69,6 +69,8 @@ $GroupTargetOU = "OU=SCCM Applications,OU=CECS Groups,DC=DS,DC=CECS,DC=PDX,DC=ED
 $SCCMSiteServer = "ITZAMNA.DS.CECS.PDX.EDU"
 $SCCMSiteCode = "KAT"
 $RootSCCMFolderPath = "Software\"
+$InstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")'
+$UninstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where (SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")) and (SMS_R_System.ResourceId not in (select SMS_R_System.ResourceId from  SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupB")))'
 
 # Define function to move Objects into containing Folders in SCCM.
 # Credit for writing this function goes to Kaido, at http://cm12sdk.net/?p=1006.
@@ -114,6 +116,35 @@ Function New-InstallGroup {
     if ($Uninstall) { $GroupName += " Uninstall" }
     Write-Host "Creating Group '$GroupName'."
     New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+}
+
+# Create Install/Uninstall Collection
+Function New-InstallCollection {
+    Param(
+        [Parameter(Mandatory=$True)][String]$SoftwareName,
+        [Parameter(Mandatory=$False)][String]$Version,
+        [Parameter(Mandatory=$False)][String]$Type,
+        [Parameter(Mandatory=$False)][String]$Manufacturer,
+        [Parameter(Mandatory=$True)][String]$InstallGroup,
+        [Parameter(Mandatory=$False)][String]$UninstallGroup
+    )
+    if ($UninstallGroup) {
+        $CollectionName = "Uninstall ${SoftwareName}"
+        $Query = $UninstallQuery.Replace('SCCM_GroupA',$UninstallGroup).Replace('SCCM_GroupB',$InstallGroup)
+        $QueryRuleName = "Is in $UninstallGroup and not in $InstallGroup"
+    } else {
+        $CollectionName = "Install ${SoftwareName}"
+        $Query = $InstallQuery.Replace('SCCM_GroupA',$InstallGroup)
+        $QueryRuleName = "Is in $InstallGroup"
+    }
+    if ($Version) { $CollectionName += " ${Version}" }
+    if ($Type) { $CollectionName += " ${Type}" }
+    Push-Location "${SCCMSiteCode}:\"
+    $Schedule = New-CMSchedule -End (Get-Date) -RecurCount 5 -RecurInterval Minutes -Start (Get-Date)
+    Write-Host "Creating Collection '$CollectionName'."
+    $Collection = New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $Schedule
+    Add-CMDeviceCollectionQueryMembershipRule -CollectionName $CollectionName -RuleName $QueryRuleName -QueryExpression $Query
+    return $Collection
 }
 
 # Create Install group(s)
