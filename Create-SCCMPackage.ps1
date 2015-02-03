@@ -100,32 +100,40 @@ Function Move-CMObject
 # Ex: Move-CMObject -SiteCode PRI -SiteServer Server100 -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
 
 
+# Create Install/Uninstall group
+Function New-InstallGroup {
+    Param(
+        [Parameter(Mandatory=$True)][String]$SoftwareName,
+        [Parameter(Mandatory=$False)][String]$Version,
+        [Parameter(Mandatory=$False)][String]$Type,
+        [Parameter(Mandatory=$False)][Switch]$Uninstall
+    )
+    $GroupName = "SCCM_${SoftwareName}"
+    if ($Version) { $GroupName += " ${Version}" }
+    if ($Type) { $GroupName += " ${Type}" }
+    if ($Uninstall) { $GroupName += " Uninstall" }
+    Write-Host "Creating Group '$GroupName'."
+    New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+}
+
 # Create Install group(s)
 $InstallGroups = @()
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
-        $GroupName = "SCCM_${SoftwareName} ${Version} ${Type}"
-        Write-Host "Creating Group '$GroupName'."
-        $InstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+        $InstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type
     }
 } else {
-    $GroupName = "SCCM_${SoftwareName} ${Version}"
-    Write-Host "Creating Group '$GroupName'."
-    $InstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+    $InstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version
 }
 
 # Create Uninstall group(s)
 $UninstallGroups = @()
 if ($UninstallTypes) {
     foreach ($Type in $UninstallTypes) {
-        $GroupName = "SCCM_${SoftwareName} ${Version} ${Type} Uninstall"
-        Write-Host "Creating Group '$GroupName'."
-        $UninstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+        $UninstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type -Uninstall
     }
 } else {
-    $GroupName = "SCCM_${SoftwareName} ${Version} Uninstall"
-    Write-Host "Creating Group '$GroupName'."
-    $UninstallGroups += New-ADGroup $GroupName -DisplayName $GroupName -Path $GroupTargetOU -GroupScope Global -PassThru
+    $UninstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Uninstall
 }
 
 # Switch contexts to SCCM 2012.
