@@ -3,8 +3,9 @@
     Creates the framework for a Group-deployed SCCM 2012 software package.
 
     .Description
-    Creates AD Security Groups for installing and uninstalling a software package, then creates SCCM 2012 Collections which are populated by members of those groups, and then creates a SCCM 2012 Package which will install software to those Collections.
-    The Programs within the SCCM 2012 Package must still be created, as well as the Advertisements.
+    Creates AD Security Groups for installing and uninstalling a software
+    package, then creates SCCM 2012 Collections which are populated by members
+    of those groups. The SCCM 2012 Package/Application must still be created.
 
     .Parameter SoftwareName
     The name of the software package.
@@ -16,10 +17,9 @@
     The manufacturer/vendor of the software package.
 
     .Parameter InstallTypes
-    A list of the names of different types (configurations) of installations of the same software package. E.g. network (license server) activation vs. serial number activation, 64-bit vs. 32-bit, etc.
-
-    .Parameter UninstallTypes
-    A list of the names of different types (configurations) of uninstallations of the same software package. E.g. 64-bit vs. 32-bit.
+    A list of the names of different types (configurations) of installations
+    of the same software package. E.g. network activation vs. serial number
+    activation, 64-bit vs. 32-bit, etc.
 
     .Example
     Create-SCCMPackage.ps1 -SoftwareName Thunderbird -Version 17.0.7 -Manufacturer Mozilla
@@ -28,36 +28,31 @@
     SCCM_Thunderbird 17.0.7
     SCCM_Thunderbird 17.0.7 Uninstall
 
-    The following Collections:
+    And the following Collections:
     Install Thunderbird 17.0.7
     Uninstall Thunderbird 17.0.7
-
-    And the following Package:
-    Mozilla Thunderbird 17.0.7
-
+    
     .Example
     Create-SCCMPackage.ps1 -SoftwareName SPSS -Version 21 -Manufacturer IBM -InstallTypes Network,Activation
 
     This will create the following AD Groups:
     SCCM_SPSS 21 Network
     SCCM_SPSS 21 Activation
-    SCCM_SPSS 21 Uninstall
+    SCCM_SPSS 21 Network Uninstall
+    SCCM_SPSS 21 Activation Uninstall
 
-    The following Collections:
+    And the following Collections:
     Install SPSS 21 Network
     Install SPSS 21 Activation
-    Uninstall SPSS 21
-
-    And the following Package:
-    IBM SPSS 21
+    Uninstall SPSS 21 Network
+    Uninstall SPSS 21 Activation
 #>
 [CmdletBinding()]
 Param(
     [Parameter(Mandatory=$true)][Alias('Name')][String]$SoftwareName,
-    [Parameter(Mandatory=$true)][String]$Version,
-    [Parameter(Mandatory=$true)][Alias('Vendor')][String]$Manufacturer,
-    [Parameter(Mandatory=$false)][String[]]$InstallTypes = $null,
-    [Parameter(Mandatory=$false)][String[]]$UninstallTypes = $null
+    [Parameter(Mandatory=$false)][String]$Version,
+    [Parameter(Mandatory=$false)][Alias('Vendor')][String]$Manufacturer,
+    [Parameter(Mandatory=$false)][Alias('Types')][String[]]$InstallTypes = $null
 )
 
 # Load necessary Modules.
@@ -144,57 +139,23 @@ Function New-InstallCollection {
     Write-Host "Creating Collection '$CollectionName'."
     $Collection = New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $Schedule
     Add-CMDeviceCollectionQueryMembershipRule -CollectionName $CollectionName -RuleName $QueryRuleName -QueryExpression $Query
+    Pop-Location
     return $Collection
 }
 
-# Create Install group(s)
-$InstallGroups = @()
+# Create Groups and Collections
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
-        $InstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type
+        $InstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type
+        $UninstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type -Uninstall
+        $InstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Type $Type -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name
+        $UninstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Type $Type -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name -UninstallGroup $UninstallGroup.Name
     }
 } else {
-    $InstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version
-}
-
-# Create Uninstall group(s)
-$UninstallGroups = @()
-if ($UninstallTypes) {
-    foreach ($Type in $UninstallTypes) {
-        $UninstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type -Uninstall
-    }
-} else {
-    $UninstallGroups += New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Uninstall
-}
-
-# Switch contexts to SCCM 2012.
-Push-Location "${SCCMSiteCode}:\"
-
-# Create SCCM 2012 Device Collections.
-$InstallCollections = @()
-$sched = New-CMSchedule -End (Get-Date) -RecurCount 5 -RecurInterval Minutes -Start (Get-Date)
-if ($InstallTypes) {
-    foreach ($Type in $InstallTypes) {
-        $CollectionName = "Install ${SoftwareName} ${Version} ${Type}"
-        Write-Host "Creating Collection '$CollectionName'."
-        $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
-    }
-} else {
-    $CollectionName = "Install ${SoftwareName} ${Version}"
-    Write-Host "Creating Collection '$CollectionName'."
-    $InstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
-}
-$UninstallCollections = @()
-if ($UninstallTypes) {
-    foreach ($Type in $UninstallTypes) {
-        $CollectionName = "Uninstall ${SoftwareName} ${Version} ${Type}"
-        Write-Host "Creating Collection '$CollectionName'."
-        $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
-    }
-} else {
-    $CollectionName = "Uninstall ${SoftwareName} ${Version}"
-    Write-Host "Creating Collection '$CollectionName'."
-    $UninstallCollections += New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName "All Systems" -RefreshSchedule $sched
+    $InstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version
+    $UninstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Uninstall
+    $InstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name
+    $UninstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name -UninstallGroup $UninstallGroup.Name
 }
 
 # Create Folder to move Collections into.
@@ -203,5 +164,3 @@ if ($UninstallTypes) {
 # gwmi -query "select * from SMS_ObjectContainerNode where name like 'Software'" -Namespace "root\SMS\Site_KAT" -comp itzamna | format-list *
 # Create Package
 #$sched = ([wmiclass]"\\${SCCMSiteServer}\Root\SMS\Site_${SCCMSiteCode}:SMS_ST_RecurInterval").CreateInstance()
-
-Pop-Location
