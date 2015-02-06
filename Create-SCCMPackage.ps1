@@ -143,6 +143,42 @@ Function New-InstallCollection {
     return $Collection
 }
 
+# Find and return a Device Collection folder at the given Path. The AutoCreate
+# parameter causes this function to create the folder and any parents as
+# necessary, if they don't already exist.
+Function Get-CollectionFolder {
+    Param(
+        [String]$Path,
+        [Switch]$AutoCreate
+    )
+    $TypeId = 5000
+    $ParentId = 0
+    $Folders = Get-CimInstance -ClassName SMS_ObjectContainerNode -ComputerName $SCCMSiteServer -Namespace Root\SMS\site_$SCCMSiteCode | Where-Object { $_.ObjectType -eq $TypeId }
+    $PathSegments = $Path.Split('\')
+    $TargetFolder = $null
+    foreach ($PathSegment in $PathSegments) {
+        $Found = $False
+        if ($PathSegment -eq '') { continue }
+        foreach ($Folder in $Folders) {
+            if (($PathSegment -like $Folder.Name) -and ($ParentId -eq $Folder.ParentContainerNodeID)) {
+                $ParentId = $Folder.ContainerNodeID
+                $Found = $True
+                $TargetFolder = $Folder
+                break
+            }
+        }
+        if (-not $Found) {
+            if ($AutoCreate) {
+                $TargetFolder = New-CimInstance -ClassName SMS_ObjectContainerNode -Property @{Name=$PathSegment;ObjectType=$TypeId;ParentContainerNodeid=$ParentId;SourceSite=$SCCMSiteCode} -Namespace Root/SMS/site_$SCCMSiteCode -ComputerName $SCCMSiteServer
+                $ParentId = $TargetFolder.ContainerNodeID
+            } else {
+                return $null
+            }
+        }
+    }
+    return $TargetFolder
+}
+
 # Create Groups and Collections
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
