@@ -34,7 +34,7 @@
     Install Thunderbird 17.0.7
     Uninstall Thunderbird 17.0.7
 
-    And place the Collections in the following Folder under Device Collections:
+    And place the ollections in the following Folder under Device Collections:
 
     Root\Software\Mozilla
     
@@ -73,7 +73,7 @@ Import-Module "C:\Program Files (x86)\Microsoft Configuration Manager\AdminConso
 $GroupTargetOU = "OU=SCCM Applications,OU=CECS Groups,DC=DS,DC=CECS,DC=PDX,DC=EDU"
 $SCCMSiteServer = "ITZAMNA.DS.CECS.PDX.EDU"
 $SCCMSiteCode = "KAT"
-$RootSCCMFolderPath = "Software\"
+$SCCMFolderTargetPath = "Software\"
 $InstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")'
 $UninstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where (SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")) and (SMS_R_System.ResourceId not in (select SMS_R_System.ResourceId from  SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupB")))'
 $TypeID = 5000
@@ -160,7 +160,6 @@ Function Get-CollectionFolder {
         [String]$Path,
         [Switch]$AutoCreate
     )
-    $TypeId = 5000
     $ParentId = 0
     $Folders = Get-CimInstance -ClassName SMS_ObjectContainerNode -ComputerName $SCCMSiteServer -Namespace Root\SMS\site_$SCCMSiteCode | Where-Object { $_.ObjectType -eq $TypeId }
     $PathSegments = $Path.Split('\')
