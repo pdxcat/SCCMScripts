@@ -188,7 +188,7 @@ Function Get-CollectionFolder {
 }
 
 # Create Groups and Collections
-$CollFolder = Get-CollectionFolder -Path "${RootSCCMFolderPath}\${Manufacturer}" -AutoCreate
+$CollFolder = Get-CollectionFolder -Path "${SCCMFolderTargetPath}\${Manufacturer}" -AutoCreate
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $InstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type
