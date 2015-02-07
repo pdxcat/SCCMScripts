@@ -5,7 +5,9 @@
     .Description
     Creates AD Security Groups for installing and uninstalling a software
     package, then creates SCCM 2012 Collections which are populated by members
-    of those groups. The SCCM 2012 Package/Application must still be created.
+    of those groups. Finally, creates a containing Folder in the SCCM Console
+    to organize the collection by its manufacturer's name. The SCCM 2012
+    Package/Application must still be created.
 
     .Parameter SoftwareName
     The name of the software package.
@@ -31,6 +33,10 @@
     And the following Collections:
     Install Thunderbird 17.0.7
     Uninstall Thunderbird 17.0.7
+
+    And place the Collections in the following Folder under Device Collections:
+
+    Root\Software\Mozilla
     
     .Example
     Create-SCCMPackage.ps1 -SoftwareName SPSS -Version 21 -Manufacturer IBM -InstallTypes Network,Activation
@@ -46,6 +52,10 @@
     Install SPSS 21 Activation
     Uninstall SPSS 21 Network
     Uninstall SPSS 21 Activation
+
+    And place the Collections in the following Folder under Device Collections:
+
+    Root\Software\IBM
 #>
 [CmdletBinding()]
 Param(
@@ -66,6 +76,7 @@ $SCCMSiteCode = "KAT"
 $RootSCCMFolderPath = "Software\"
 $InstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")'
 $UninstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where (SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")) and (SMS_R_System.ResourceId not in (select SMS_R_System.ResourceId from  SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupB")))'
+$TypeID = 5000
 
 # Define function to move Objects into containing Folders in SCCM.
 # Credit for writing this function goes to Kaido, at http://cm12sdk.net/?p=1006.
@@ -94,8 +105,6 @@ Function Move-CMObject
         $_.Exception.Message
     }  
 }
-# Ex: Move-CMObject -SiteCode PRI -SiteServer Server100 -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
-
 
 # Create Install/Uninstall group
 Function New-InstallGroup {
@@ -180,23 +189,21 @@ Function Get-CollectionFolder {
 }
 
 # Create Groups and Collections
+$CollFolder = Get-CollectionFolder -Path "${RootSCCMFolderPath}\${Manufacturer}" -AutoCreate
 if ($InstallTypes) {
     foreach ($Type in $InstallTypes) {
         $InstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type
         $UninstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Type $Type -Uninstall
         $InstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Type $Type -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name
         $UninstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Type $Type -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name -UninstallGroup $UninstallGroup.Name
+        $Result = Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID $InstallCollection.CollectionID -CurrentFolderID 0 -TargetFolderID $CollFolder.ContainerNodeID -ObjectTypeID $TypeID
+        $Result = Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID $UninstallCollection.CollectionID -CurrentFolderID 0 -TargetFolderID $CollFolder.ContainerNodeID -ObjectTypeID $TypeID
     }
 } else {
     $InstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version
     $UninstallGroup = New-InstallGroup -SoftwareName $SoftwareName -Version $Version -Uninstall
     $InstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name
     $UninstallCollection = New-InstallCollection -SoftwareName $SoftwareName -Version $Version -Manufacturer $Manufacturer -InstallGroup $InstallGroup.Name -UninstallGroup $UninstallGroup.Name
+    $Result = Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID $InstallCollection.CollectionID -CurrentFolderID 0 -TargetFolderID $CollFolder.ContainerNodeID -ObjectTypeID $TypeID
+    $Result = Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID $UninstallCollection.CollectionID -CurrentFolderID 0 -TargetFolderID $CollFolder.ContainerNodeID -ObjectTypeID $TypeID
 }
-
-# Create Folder to move Collections into.
-# Move Collections into Folder.
-#Move-CMObject -SiteCode $SCCMSiteCode -SiteServer $SCCMSiteServer -ObjectID "PRI00017" -CurrentFolderID 0 -TargetFolderID "16777236," -ObjectTypeID 5000
-# gwmi -query "select * from SMS_ObjectContainerNode where name like 'Software'" -Namespace "root\SMS\Site_KAT" -comp itzamna | format-list *
-# Create Package
-#$sched = ([wmiclass]"\\${SCCMSiteServer}\Root\SMS\Site_${SCCMSiteCode}:SMS_ST_RecurInterval").CreateInstance()
