@@ -77,6 +77,7 @@ $SCCMFolderTargetPath = "Software\"
 $InstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")'
 $UninstallQuery = 'select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where (SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupA")) and (SMS_R_System.ResourceId not in (select SMS_R_System.ResourceId from  SMS_R_System where SMS_R_System.SystemGroupName in ("CECS\\SCCM_GroupB")))'
 $TypeID = 5000
+$ErrorActionPreference = 'Stop'
 
 # Define function to move Objects into containing Folders in SCCM.
 # Credit for writing this function goes to Kaido, at http://cm12sdk.net/?p=1006.
