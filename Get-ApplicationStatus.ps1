@@ -3,8 +3,8 @@
     Gets the status of SCCM 2012 Applications that have been deployed to the specified computer.
 
 .Description
-    This script queries the WMI repository on the specified computer (or the local machine if a computer name is not given) for information
-    about SCCM 2012 Applications that have been deployed to it.
+    This script queries the WMI repository on the specified computer (or the local machine if a computer name is not given)
+    for information about SCCM 2012 Applications that have been deployed to it.
 
 .Inputs
     [String]ComputerName
