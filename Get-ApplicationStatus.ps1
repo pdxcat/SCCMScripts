@@ -40,5 +40,5 @@ Function Set-DefaultProperties {
     }
 }
 $Apps = Get-WmiObject -Namespace "Root\CCM\ClientSDK" -Class CCM_Application
-$Apps | Set-DefaultProperties -Properties FullName,SoftwareVersion,Publisher,ApplicabilityState,SupersessionState,InstallState
-$Apps
+$Apps | Set-DefaultProperties -Properties FullName,ApplicabilityState,SupersessionState,InstallState
+$Apps | Sort-Object FullName,InstallState
