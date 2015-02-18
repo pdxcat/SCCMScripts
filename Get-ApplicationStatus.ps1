@@ -39,6 +39,6 @@ Function Set-DefaultProperties {
         if ($PassThru) { Write-Output $InputObject }
     }
 }
-$Apps = Get-WmiObject -Namespace "Root\CCM\ClientSDK" -Class CCM_Application
+$Apps = Get-WmiObject -ComputerName $ComputerName -Namespace "Root\CCM\ClientSDK" -Class CCM_Application
 $Apps | Set-DefaultProperties -Properties FullName,ApplicabilityState,SupersessionState,InstallState
 $Apps | Sort-Object FullName,InstallState
